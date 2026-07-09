@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
@@ -40,15 +40,27 @@ def get_current_user(token: str, db: Session = Depends(get_db)) -> User:
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        # Strip "Bearer " prefix if present
+        if token.startswith("Bearer "):
+            token = token.replace("Bearer ", "")
+
+        print(f"DEBUG: Decoding token: {token[:50]}...")
+        # print(f"DEBUG: SECRET_KEY: {SECRET_KEY}")
+        # print(f"DEBUG: ALGORITHM: {ALGORITHM}")
+
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        print(f"DEBUG: Payload decoded: {payload}")
+        user_id: int = int(payload.get("sub"))
         if user_id is None:
+            print("DEBUG: No sub in payload")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"DEBUG: JWTError: {str(e)}")
         raise credentials_exception
     
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
+        print(f"DEBUG: User not found with id {user_id}")
         raise credentials_exception
     return user
 
@@ -90,7 +102,7 @@ async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="User account is disabled")
     
     # Create token
-    access_token = create_access_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
     
     return {
         "access_token": access_token,
@@ -101,5 +113,32 @@ async def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(token: str, db: Session = Depends(get_db)):
     """Get current user information"""
+    print(f"DEBUG: Token received: {token[:50]}...")
     user = get_current_user(token, db)
     return user
+
+# @router.get("/me", response_model=UserResponse)
+# async def get_current_user_info(
+#     authorization: str = Header(...),
+#     db: Session = Depends(get_db)
+# ):
+#     """Get current user information"""
+#     print(f"DEBUG: Authorization header: {authorization}")
+    
+#     if not authorization:
+#         raise HTTPException(status_code=401, detail="No authorization header")
+    
+#     if not authorization.startswith("Bearer "):
+#         raise HTTPException(status_code=401, detail="Invalid format - must start with 'Bearer '")
+    
+#     token = authorization.replace("Bearer ", "")
+#     print(f"DEBUG: Extracted token: {token[:50]}...")
+    
+#     try:
+#         user = get_current_user(token, db)
+#         print(f"DEBUG: User found: {user.email}")
+#         return user
+#     except Exception as e:
+#         print(f"DEBUG: Error validating token: {str(e)}")
+#         raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
+    

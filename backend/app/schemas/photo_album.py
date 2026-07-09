@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from datetime import datetime
 from typing import Optional, List
 
@@ -53,10 +53,16 @@ class AlbumResponse(AlbumBase):
     order: int
     created_at: datetime
     updated_at: datetime
-    photo_count: Optional[int] = 0
+    # photo_count: Optional[int] = 0
 
     class Config:
         from_attributes = True
 
 class AlbumDetailResponse(AlbumResponse):
     photos: List[PhotoResponse] = []
+    
+    @computed_field
+    @property
+    def photo_count(self) -> int:
+        """Calculate from photos list"""
+        return len(self.photos)

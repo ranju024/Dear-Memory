@@ -118,11 +118,13 @@ async def delete_lead(
 @router.post("/{lead_id}/status/{status}", response_model=LeadResponse)
 async def update_lead_status(
     lead_id: int,
-    status: LeadStatus,
+    status: str,  # Change from LeadStatus to str
     token: str,
     db: Session = Depends(get_db)
 ):
     """Update lead status in pipeline"""
+    from datetime import datetime
+    
     user = get_current_user(token, db)
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
     
@@ -132,17 +134,24 @@ async def update_lead_status(
     if lead.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    lead.status = status
+    # Convert string to enum
+    try:
+        lead_status = LeadStatus(status)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be: New, Contacted, Quoted, Booked, or Lost")
+    
+    lead.status = lead_status
     
     # Set timestamp based on status
-    if status == LeadStatus.CONTACTED:
-        lead.contacted_at = db.func.now()
-    elif status == LeadStatus.QUOTED:
-        lead.quoted_at = db.func.now()
-    elif status == LeadStatus.BOOKED:
-        lead.booked_at = db.func.now()
+    if lead_status == LeadStatus.CONTACTED:
+        lead.contacted_at = datetime.utcnow()
+    elif lead_status == LeadStatus.QUOTED:
+        lead.quoted_at = datetime.utcnow()
+    elif lead_status == LeadStatus.BOOKED:
+        lead.booked_at = datetime.utcnow()
     
     db.commit()
     db.refresh(lead)
     
+    logger.info(f"Lead status updated: {lead.name} -> {lead_status}")
     return lead
