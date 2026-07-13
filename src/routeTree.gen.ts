@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TemplatesRouteImport } from './routes/templates'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AlbumEditorRouteImport } from './routes/album-editor'
 import { Route as IndexRouteImport } from './routes/index'
@@ -38,9 +40,19 @@ const TemplatesRoute = TemplatesRouteImport.update({
   path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -153,7 +165,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/album-editor': typeof AlbumEditorRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/register': typeof RegisterRoute
   '/templates': typeof TemplatesRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/brand': typeof DashboardBrandRoute
@@ -177,7 +191,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/album-editor': typeof AlbumEditorRoute
+  '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/register': typeof RegisterRoute
   '/templates': typeof TemplatesRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/brand': typeof DashboardBrandRoute
@@ -203,7 +219,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/album-editor': typeof AlbumEditorRoute
   '/dashboard': typeof DashboardRouteWithChildren
+  '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
+  '/register': typeof RegisterRoute
   '/templates': typeof TemplatesRoute
   '/dashboard/analytics': typeof DashboardAnalyticsRoute
   '/dashboard/brand': typeof DashboardBrandRoute
@@ -230,7 +248,9 @@ export interface FileRouteTypes {
     | '/'
     | '/album-editor'
     | '/dashboard'
+    | '/login'
     | '/pricing'
+    | '/register'
     | '/templates'
     | '/dashboard/analytics'
     | '/dashboard/brand'
@@ -254,7 +274,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/album-editor'
+    | '/login'
     | '/pricing'
+    | '/register'
     | '/templates'
     | '/dashboard/analytics'
     | '/dashboard/brand'
@@ -279,7 +301,9 @@ export interface FileRouteTypes {
     | '/'
     | '/album-editor'
     | '/dashboard'
+    | '/login'
     | '/pricing'
+    | '/register'
     | '/templates'
     | '/dashboard/analytics'
     | '/dashboard/brand'
@@ -305,7 +329,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlbumEditorRoute: typeof AlbumEditorRoute
   DashboardRoute: typeof DashboardRouteWithChildren
+  LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
+  RegisterRoute: typeof RegisterRoute
   TemplatesRoute: typeof TemplatesRoute
   EventSlugRoute: typeof EventSlugRoute
   StudioSlugRoute: typeof StudioSlugRoute
@@ -320,11 +346,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -523,7 +563,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlbumEditorRoute: AlbumEditorRoute,
   DashboardRoute: DashboardRouteWithChildren,
+  LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
+  RegisterRoute: RegisterRoute,
   TemplatesRoute: TemplatesRoute,
   EventSlugRoute: EventSlugRoute,
   StudioSlugRoute: StudioSlugRoute,

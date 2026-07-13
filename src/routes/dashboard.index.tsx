@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { type ElementType, type ReactNode } from "react";
+import { type ElementType, type ReactNode, useEffect, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
@@ -11,30 +11,88 @@ import {
 } from "lucide-react";
 
 import { AppShell } from "@/components/app/AppShell";
-import { ACTIVITY, EVENTS } from "@/lib/mock/data";
+import { eventsAPI, analyticsAPI, getToken, getUserIdFromToken } from "@/lib/api/client";
 
 export const Route = createFileRoute("/dashboard/")({
   head: () => ({ meta: [{ title: "Dashboard — DearMemory" }] }),
   component: Dashboard,
 });
 
-const publishedEvents = EVENTS.filter((event) => event.status === "Live").length;
-const totalViews = EVENTS.reduce((sum, event) => sum + event.views, 0);
-const totalVisitors = EVENTS.reduce((sum, event) => sum + event.visitors, 0);
-const TRAFFIC_BARS = [
-  { day: "Mon", heightClass: "h-14" },
-  { day: "Tue", heightClass: "h-16" },
-  { day: "Wed", heightClass: "h-20" },
-  { day: "Thu", heightClass: "h-18" },
-  { day: "Fri", heightClass: "h-24" },
-  { day: "Sat", heightClass: "h-28" },
-  { day: "Sun", heightClass: "h-26" },
-];
-
 function Dashboard() {
+  const [events, setEvents] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = getToken();
+        if (!token) {
+          setError("Not authenticated");
+          return;
+        }
+
+        const userId = getUserIdFromToken();
+
+        const [eventsData, statsData] = await Promise.all([
+          eventsAPI.list(),
+          analyticsAPI.dashboard(parseInt(userId || '1')),
+        ]);
+
+        setEvents(eventsData || []);
+        setStats(statsData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load dashboard");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Calculate values from real data
+  const publishedEvents = events.filter((event) => event.status === "Live").length;
+  const totalViews = stats?.total_views || 0;
+  const totalVisitors = stats?.total_visitors || 0;
+  
+  const TRAFFIC_BARS = [
+    { day: "Mon", heightClass: "h-14" },
+    { day: "Tue", heightClass: "h-16" },
+    { day: "Wed", heightClass: "h-20" },
+    { day: "Thu", heightClass: "h-18" },
+    { day: "Fri", heightClass: "h-24" },
+    { day: "Sat", heightClass: "h-28" },
+    { day: "Sun", heightClass: "h-26" },
+  ];
+
+  if (loading) {
+    return (
+      <AppShell
+        title="Dashboard"
+        subtitle="Loading..."
+      >
+        <div className="text-center py-12">Loading dashboard data...</div>
+      </AppShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <AppShell
+        title="Dashboard"
+        subtitle="Error"
+      >
+        <div className="text-center py-12 text-red-600">{error}</div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell
-      title="Welcome back, Inês"
+      title="Welcome back"
       subtitle="A quick read on the stories your studio is shaping today."
       action={
         <div className="flex items-center gap-2">
@@ -59,13 +117,13 @@ function Dashboard() {
               At a glance
             </div>
             <p className="mt-0.5 text-[13px] text-[#a09c98]">
-              A compact summary of the studio’s current momentum.
+              A compact summary of the studio's current momentum.
             </p>
 
             <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               <StatCard
                 label="Active events"
-                value={EVENTS.length.toString()}
+                value={events.length.toString()}
                 delta="+3 this month"
                 deltaTone="positive"
                 accent="emerald"
@@ -135,9 +193,8 @@ function Dashboard() {
           <div className="bg-white rounded-2xl border border-[#e8e4de] p-6">
             <SectionHeader title="Recent activity" subtitle="How people are engaging with the stories" />
             <div className="mt-4 space-y-0">
-              {ACTIVITY.map((item) => (
-                <ActivityRow key={item.id} item={item} />
-              ))}
+              {/* TODO: Fetch from API when activity endpoint is ready */}
+              <div className="text-center py-8 text-[#a09c98]">No activity yet</div>
             </div>
           </div>
         </section>
@@ -151,14 +208,14 @@ function Dashboard() {
             />
 
             <div className="mt-4 space-y-3">
-              {EVENTS.slice(0, 4).map((event) => (
+              {events.slice(0, 4).map((event) => (
                 <Link
                   key={event.id}
                   to="/dashboard/events/$id"
                   params={{ id: event.id }}
                   className="group flex items-center gap-4 rounded-2xl border border-[#e8e4de] p-3 hover:shadow-[0_2px_12px_rgba(45,42,41,0.07)] transition-shadow"
                 >
-                  <img src={event.cover} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                  <img src={event.cover_image || "/placeholder.png"} alt="" className="h-14 w-14 rounded-xl object-cover" />
                   <div className="min-w-0 flex-1">
                     <div className="text-[14px] font-semibold tracking-[-0.01em] text-[#2d2a29] truncate">
                       {event.title}
@@ -197,6 +254,7 @@ function Dashboard() {
     </AppShell>
   );
 }
+
 
 function SectionHeader({
   title,

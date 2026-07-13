@@ -38,7 +38,7 @@ function Landing() {
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 animate-fade-up [animation-delay:200ms]">
             <Link
-              to="/dashboard"
+              to="/register"
               className="bg-emerald text-white px-8 py-4 rounded-full font-bold shadow-lg shadow-emerald/15 hover:bg-emerald-deep transition-all hover:-translate-y-0.5"
             >
               Start Creating
