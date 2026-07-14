@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from ...database import get_db
 from ...models.event import Event, EventStatus
+from ...models.photo import Photo
 from ...models.user import User
 from ...schemas.event import EventCreate, EventUpdate, EventResponse, EventDetailResponse
 from .auth import get_current_user
@@ -54,6 +56,28 @@ async def list_events(
         query = query.filter(Event.status == status_filter)
     
     events = query.offset(skip).limit(limit).all()
+
+    # Convert to dicts and add photo count
+    result = []
+    for event in events:
+        event_dict = {
+            "id": event.id,
+            "slug": event.slug,
+            "title": event.title,
+            "subtitle": event.subtitle,
+            "description": event.description,
+            "type": event.type,
+            "date": event.date,
+            "cover_image": event.cover_image,
+            "views": event.views,
+            "visitors": event.visitors,
+            "status": event.status,
+            "owner_id": event.owner_id,
+            "created_at": event.created_at,
+            "updated_at": event.updated_at,
+            "photo_count": db.query(func.count(Photo.id)).filter(Photo.event_id == event.id).scalar() or 0,
+        }
+        result.append(event_dict)
     return events
 
 @router.get("/{event_id}", response_model=EventDetailResponse)

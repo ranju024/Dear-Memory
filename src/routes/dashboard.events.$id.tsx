@@ -68,12 +68,30 @@ function EventDetail() {
 
     setUploading(true);
     try {
+      console.log("Uploading to event:", eventId);
       const newPhoto = await photosAPI.upload(eventId, file);
+      console.log("Upload response:", newPhoto);
       setPhotos([...photos, newPhoto]);
+
+      // Refetch event to update stats
+      const updatedEvent = await eventsAPI.get(eventId);
+      setEvent(updatedEvent);
     } catch (err) {
+      console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Failed to upload photo");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: number) => {
+    if (!window.confirm("Delete this photo?")) return;
+    
+    try {
+      await photosAPI.delete(photoId);
+      setPhotos(photos.filter(p => p.id !== photoId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete photo");
     }
   };
 
@@ -245,12 +263,17 @@ function EventDetail() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {photos.map((photo) => (
-                <div key={photo.id} className="aspect-square rounded-lg overflow-hidden">
+                <div key={photo.id} className="aspect-square rounded-lg overflow-hidden group relative">
                   <img
-                    src={photo.url}
+                    // src={photo.url.startsWith('http') ? photo.url : `http://localhost:8000${photo.url}`}
+                    src={`http://localhost:8000${photo.url}`}                    
                     alt={photo.filename}
                     className="w-full h-full object-cover hover:scale-105 transition-transform"
                   />
+                  <button 
+                    onClick={() => handleDeletePhoto(photo.id)}
+                    className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    >X</button>
                 </div>
               ))}
             </div>

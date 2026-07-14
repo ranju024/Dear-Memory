@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Enum, func
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from ..database import Base
@@ -51,5 +51,16 @@ class Event(Base):
     photos = relationship("Photo", back_populates="event", cascade="all, delete-orphan")
     albums = relationship("Album", back_populates="event", cascade="all, delete-orphan")
 
+
+    @property
+    def photo_count(self):
+        """Get count of photos in this event"""
+        from sqlalchemy.orm import object_session
+        db = object_session(self)
+        if db:
+            from .photo import Photo
+            return db.query(func.count(Photo.id)).filter(Photo.event_id == self.id).scalar() or 0
+        return 0
+    
     def __repr__(self):
         return f"<Event {self.slug}>"

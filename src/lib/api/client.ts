@@ -24,7 +24,7 @@ export const getUserIdFromToken = () => {
   } catch {
     return null;
   }
-}; 
+};
 
 // Generic API call helper
 async function apiCall(endpoint: string, options: RequestInit = {}) {
@@ -52,6 +52,11 @@ async function apiCall(endpoint: string, options: RequestInit = {}) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || "API Error");
+  }
+
+  // Handle 204 No Content
+  if (response.status === 204) {
+    return null;
   }
 
   return response.json();
@@ -123,6 +128,11 @@ export const photosAPI = {
   favorite: (id: number) => apiCall(`/photos/photo/${id}/favorite`, { method: "POST" }),
 
   download: (id: number) => apiCall(`/photos/photo/${id}/download`, { method: "POST" }),
+
+  delete: (id: number) =>
+    apiCall(`/photos/photo/${id}?token=${getToken()}`, {
+      method: "DELETE",
+    }),
 };
 
 // ALBUMS

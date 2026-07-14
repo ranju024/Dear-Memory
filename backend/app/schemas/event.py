@@ -47,6 +47,7 @@ class EventResponse(EventBase):
     views: int
     visitors: int
     owner_id: int
+    photo_count: int
     created_at: datetime
     updated_at: datetime
 

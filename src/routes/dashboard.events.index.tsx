@@ -126,7 +126,7 @@ function EventsList() {
             >
               <div className="relative aspect-[16/10] overflow-hidden">
                 <img
-                  src={e.cover_image || "/placeholder.png"}
+                  src={e.cover_image ? `http://localhost:8000${e.cover_image}` : "/placeholder.png"}
                   alt={e.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
@@ -149,7 +149,7 @@ function EventsList() {
                 <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-border">
                   <Stat label="Views" v={e.views.toLocaleString()} />
                   <Stat label="Visitors" v={e.visitors.toLocaleString()} />
-                  <Stat label="Photos" v="0" />
+                  <Stat label="Photos" v={e.photo_count?.toString() || "0"} />
                 </div>
                 <div className="flex gap-2 mt-5">
                   <Link
