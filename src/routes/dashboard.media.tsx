@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app/AppShell";
-import { eventsAPI, photosAPI } from "@/lib/api/client";
+import { eventsAPI, photosAPI, albumsAPI } from "@/lib/api/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/media")({
   head: () => ({ meta: [{ title: "Media Library — DearMemory" }] }),
@@ -20,6 +20,12 @@ function Media() {
   const [activeEvent, setActiveEvent] = useState<number | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const [folderName, setFolderName] = useState("");
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,6 +34,9 @@ function Media() {
 
         const eventsData = await eventsAPI.list();
         setEvents(eventsData || []);
+        if (eventsData && eventsData.length > 0 && !selectedEventId) {
+          setSelectedEventId(eventsData[0].id);
+        }
 
         const allPhotosData: any[] = [];
         if (eventsData && eventsData.length > 0) {
@@ -90,6 +99,7 @@ function Media() {
       const updated = photo?.favorites > 0 
         ? await photosAPI.unfavorite(photoId)
         : await photosAPI.favorite(photoId);
+      
       setAllPhotos(allPhotos.map((p) => (p.id === photoId ? updated : p)));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to favorite photo");
@@ -112,6 +122,58 @@ function Media() {
     setLightboxOpen(true);
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedEventId) return;
+
+    // Check file type before uploading
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      setError(`File type not supported. Allowed: JPEG, PNG, WebP, GIF`);
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+
+    setUploading(true);
+    try {
+      const newPhoto = await photosAPI.upload(selectedEventId, file);
+      setAllPhotos([...allPhotos, { ...newPhoto, event_title: events.find(ev => ev.id === selectedEventId)?.title }]);
+      setUploadModalOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload photo");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!folderName || !selectedEventId) {
+      setError("Please enter folder name and select an event");
+      return;
+    }
+
+    setCreatingFolder(true);
+    try {
+      const newAlbum = await albumsAPI.create(selectedEventId, {
+        name: folderName,
+        slug: folderName.toLowerCase().replace(/\s+/g, "-"),
+        description: "",
+      });
+      
+      setFolderName("");
+      setFolderModalOpen(false);
+      setError(null);
+      // Optionally refresh or show success
+      alert(`Folder "${folderName}" created successfully!`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create folder");
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
   if (loading) {
     return (
       <AppShell title="Media Library" subtitle="Loading...">
@@ -120,7 +182,7 @@ function Media() {
     );
   }
 
-  if (error) {
+  if (error && !uploadModalOpen && !folderModalOpen) {
     return (
       <AppShell title="Media Library" subtitle="Error">
         <div className="text-center py-12 text-red-600">{error}</div>
@@ -134,10 +196,16 @@ function Media() {
       subtitle={`${stats.total.toLocaleString()} photos across ${events.length} events`}
       action={
         <div className="flex gap-2">
-          <button className="bg-white ring-1 ring-border px-4 py-2 rounded-full text-sm font-semibold hover:bg-cream">
+          <button
+            onClick={() => setFolderModalOpen(true)}
+            className="bg-white ring-1 ring-border px-4 py-2 rounded-full text-sm font-semibold hover:bg-cream"
+          >
             + Folder
           </button>
-          <button className="bg-emerald text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-emerald-deep">
+          <button
+            onClick={() => setUploadModalOpen(true)}
+            className="bg-emerald text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-emerald-deep"
+          >
             ↑ Upload
           </button>
         </div>
@@ -150,6 +218,137 @@ function Media() {
           onClose={() => setLightboxOpen(false)}
           onFavorite={handleFavorite}
         />
+      )}
+
+      {/* Upload Modal */}
+      {uploadModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl ring-1 ring-border p-8 max-w-md w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Upload Photos</h2>
+              <button
+                onClick={() => setUploadModalOpen(false)}
+                className="p-2 hover:bg-cream rounded"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {error && uploadModalOpen && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Select Event</label>
+                <select
+                  value={selectedEventId || ""}
+                  onChange={(e) => setSelectedEventId(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald"
+                >
+                  <option value="">Choose an event</option>
+                  {events.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      {event.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Choose Photo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleUpload}
+                  disabled={uploading || !selectedEventId}
+                  className="w-full px-4 py-2 border border-border rounded-lg"
+                />
+              </div>
+
+              {uploading && <p className="text-sm text-warm-gray">Uploading...</p>}
+
+              <button
+                onClick={() => setUploadModalOpen(false)}
+                className="w-full px-6 py-2 border border-border rounded-lg font-semibold hover:bg-cream transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Folder Modal */}
+      {folderModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl ring-1 ring-border p-8 max-w-md w-full">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Create Album</h2>
+              <button
+                onClick={() => setFolderModalOpen(false)}
+                className="p-2 hover:bg-cream rounded"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {error && folderModalOpen && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2">Select Event</label>
+                <select
+                  value={selectedEventId || ""}
+                  onChange={(e) => setSelectedEventId(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald"
+                >
+                  <option value="">Choose an event</option>
+                  {events.map((event) => (
+                    <option key={event.id} value={event.id}>
+                      {event.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Album Name</label>
+                <input
+                  type="text"
+                  value={folderName}
+                  onChange={(e) => setFolderName(e.target.value)}
+                  placeholder="e.g., Ceremony Moments"
+                  className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald"
+                />
+              </div>
+
+              <p className="text-sm text-warm-gray">This album will appear in your Albums section where you can organize and manage photos.</p>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  onClick={() => setFolderModalOpen(false)}
+                  className="flex-1 px-6 py-2 border border-border rounded-lg font-semibold hover:bg-cream transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateFolder}
+                  disabled={creatingFolder || !folderName || !selectedEventId}
+                  className="flex-1 px-6 py-2 bg-emerald text-white rounded-lg font-semibold hover:bg-emerald-deep disabled:opacity-50 transition-colors"
+                >
+                  {creatingFolder ? "Creating..." : "Create Album"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-12 gap-6">
@@ -240,7 +439,6 @@ function Media() {
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
 
-                  {/* Delete button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -251,7 +449,6 @@ function Media() {
                     <Trash2 size={14} />
                   </button>
 
-                  {/* Favorites tooltip */}
                   {photo.favorites > 0 && (
                     <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 text-white text-xs p-1 text-center">
                       ❤️ {photo.favorites}
