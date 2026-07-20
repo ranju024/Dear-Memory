@@ -180,6 +180,27 @@ async def favorite_photo(photo_id: int, db: Session = Depends(get_db)):
     
     return photo
 
+@router.post("/photo/{photo_id}/unfavorite")
+async def unfavorite_photo(
+    photo_id: int,
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Remove photo from favorites"""
+    user = get_current_user(token, db)
+    photo = db.query(Photo).filter(Photo.id == photo_id).first()
+    
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    
+    # Decrease favorites count (min 0)
+    photo.favorites = max(0, photo.favorites - 1)
+    
+    db.commit()
+    db.refresh(photo)
+    
+    return photo
+
 @router.post("/photo/{photo_id}/download", response_model=PhotoResponse)
 async def download_photo(photo_id: int, db: Session = Depends(get_db)):
     """Track download"""

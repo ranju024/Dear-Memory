@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { eventsAPI, photosAPI, analyticsAPI } from "@/lib/api/client";
 import { ArrowLeft, Upload } from "lucide-react";
+import { ImageLightbox } from "@/components/ImageLightbox";
 
 export const Route = createFileRoute("/dashboard/events/$id")({
   head: () => ({ meta: [{ title: "Event Details — DearMemory" }] }),
@@ -20,6 +21,8 @@ function EventDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const eventId = parseInt(id);
 
@@ -83,6 +86,61 @@ function EventDetail() {
       setUploading(false);
     }
   };
+
+  const handleFavorite = async (photoId: number) => {
+    try {
+      const photo = photos.find(p => p.id === photoId);
+      const updated = photo?.favorites > 0 
+        ? await photosAPI.unfavorite(photoId)
+        : await photosAPI.favorite(photoId);
+
+      setPhotos(photos.map((p) => (p.id === photoId ? updated : p)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to favorite photo");
+    }
+  };
+
+  // In the photos grid section:
+  {photos.length === 0 ? (
+    <p className="text-warm-gray text-center py-8">No photos yet. Upload your first photo!</p>
+  ) : (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      {photos.map((photo, index) => (
+        <div
+          key={photo.id}
+          className="aspect-square rounded-lg overflow-hidden group relative cursor-pointer"
+          onClick={() => {
+            setLightboxIndex(index);
+            setLightboxOpen(true);
+          }}
+        >
+          <img
+            src={`http://localhost:8000${photo.url}`}
+            alt={photo.filename}
+            className="w-full h-full object-cover hover:scale-105 transition-transform"
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeletePhoto(photo.id);
+            }}
+            className="absolute top-2 right-2 p-2 bg-red-500/80 hover:bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+
+  {lightboxOpen && (
+    <ImageLightbox
+      images={photos}
+      initialIndex={lightboxIndex}
+      onClose={() => setLightboxOpen(false)}
+      onFavorite={handleFavorite}
+    />
+  )}
 
   const handleDeletePhoto = async (photoId: number) => {
     if (!window.confirm("Delete this photo?")) return;

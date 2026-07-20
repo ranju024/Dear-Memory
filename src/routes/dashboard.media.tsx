@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { eventsAPI, photosAPI } from "@/lib/api/client";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/media")({
@@ -17,17 +18,17 @@ function Media() {
   const [error, setError] = useState<string | null>(null);
   const [activeCollection, setActiveCollection] = useState("all");
   const [activeEvent, setActiveEvent] = useState<number | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // Fetch all events
         const eventsData = await eventsAPI.list();
         setEvents(eventsData || []);
 
-        // Fetch photos from all events
         const allPhotosData: any[] = [];
         if (eventsData && eventsData.length > 0) {
           for (const event of eventsData) {
@@ -52,11 +53,9 @@ function Media() {
     fetchData();
   }, []);
 
-  // Filter photos based on collection and event
   useEffect(() => {
     let filtered = allPhotos;
 
-    // Filter by collection
     if (activeCollection === "favorites") {
       filtered = filtered.filter((p) => p.favorites > 0);
     } else if (activeCollection === "recent") {
@@ -66,7 +65,6 @@ function Media() {
       );
     }
 
-    // Filter by event
     if (activeEvent) {
       filtered = filtered.filter((p) => p.event_id === activeEvent);
     }
@@ -84,6 +82,34 @@ function Media() {
     ).length,
     totalFavorites: allPhotos.reduce((sum, p) => sum + p.favorites, 0),
     totalDownloads: allPhotos.reduce((sum, p) => sum + p.downloads, 0),
+  };
+
+  const handleFavorite = async (photoId: number) => {
+    try {
+      const photo = allPhotos.find(p => p.id === photoId);
+      const updated = photo?.favorites > 0 
+        ? await photosAPI.unfavorite(photoId)
+        : await photosAPI.favorite(photoId);
+      setAllPhotos(allPhotos.map((p) => (p.id === photoId ? updated : p)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to favorite photo");
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: number) => {
+    if (!window.confirm("Delete this photo?")) return;
+
+    try {
+      await photosAPI.delete(photoId);
+      setAllPhotos(allPhotos.filter((p) => p.id !== photoId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete photo");
+    }
+  };
+
+  const handlePhotoClick = (index: number) => {
+    setLightboxIndex(index);
+    setLightboxOpen(true);
   };
 
   if (loading) {
@@ -117,6 +143,15 @@ function Media() {
         </div>
       }
     >
+      {lightboxOpen && (
+        <ImageLightbox
+          images={filteredPhotos}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
+          onFavorite={handleFavorite}
+        />
+      )}
+
       <div className="grid grid-cols-12 gap-6">
         {/* Sidebar */}
         <aside className="col-span-12 lg:col-span-3 bg-white rounded-[1.5rem] ring-1 ring-border p-5 h-fit">
@@ -167,7 +202,6 @@ function Media() {
             ))}
           </div>
 
-          {/* Stats */}
           <div className="mt-8 pt-6 border-t border-border">
             <div className="text-xs font-semibold text-warm-gray mb-3">STATS</div>
             <div className="space-y-2 text-sm">
@@ -193,32 +227,36 @@ function Media() {
             <div className="text-center py-12 text-warm-gray">No photos found</div>
           ) : (
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {filteredPhotos.map((photo) => (
+              {filteredPhotos.map((photo, index) => (
                 <div
                   key={photo.id}
-                  className="aspect-square rounded-xl overflow-hidden group relative"
+                  className="aspect-square rounded-xl overflow-hidden group relative cursor-pointer"
+                  onClick={() => handlePhotoClick(index)}
                 >
                   <img
                     src={`http://localhost:8000${photo.url}`}
                     alt={photo.filename}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />
-                  <div className="absolute inset-0 bg-emerald/0 group-hover:bg-emerald/20 transition-colors" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
 
-                  {/* Hover info */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex flex-col items-end justify-start p-2 opacity-0 group-hover:opacity-100">
-                    <button className="p-1 bg-red-500/80 hover:bg-red-600 text-white rounded">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeletePhoto(photo.id);
+                    }}
+                    className="absolute top-2 right-2 p-1 bg-red-500/80 hover:bg-red-600 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={14} />
+                  </button>
 
-                  {/* Stats tooltip */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2 translate-y-full group-hover:translate-y-0 transition-transform">
-                    <div className="flex justify-between">
-                      <span>❤️ {photo.favorites}</span>
-                      <span>⬇️ {photo.downloads}</span>
+                  {/* Favorites tooltip */}
+                  {photo.favorites > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 text-white text-xs p-1 text-center">
+                      ❤️ {photo.favorites}
                     </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>

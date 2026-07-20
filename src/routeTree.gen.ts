@@ -33,6 +33,7 @@ import { Route as DashboardEventsIndexRouteImport } from './routes/dashboard.eve
 import { Route as DashboardAlbumsIndexRouteImport } from './routes/dashboard.albums.index'
 import { Route as DashboardEventsNewRouteImport } from './routes/dashboard.events.new'
 import { Route as DashboardEventsIdRouteImport } from './routes/dashboard.events.$id'
+import { Route as DashboardAlbumsNewRouteImport } from './routes/dashboard.albums.new'
 import { Route as DashboardAlbumsIdRouteImport } from './routes/dashboard.albums.$id'
 
 const TemplatesRoute = TemplatesRouteImport.update({
@@ -155,6 +156,11 @@ const DashboardEventsIdRoute = DashboardEventsIdRouteImport.update({
   path: '/events/$id',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAlbumsNewRoute = DashboardAlbumsNewRouteImport.update({
+  id: '/albums/new',
+  path: '/albums/new',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardAlbumsIdRoute = DashboardAlbumsIdRouteImport.update({
   id: '/albums/$id',
   path: '/albums/$id',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/studio/$slug': typeof StudioSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/albums/$id': typeof DashboardAlbumsIdRoute
+  '/dashboard/albums/new': typeof DashboardAlbumsNewRoute
   '/dashboard/events/$id': typeof DashboardEventsIdRoute
   '/dashboard/events/new': typeof DashboardEventsNewRoute
   '/dashboard/albums/': typeof DashboardAlbumsIndexRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/studio/$slug': typeof StudioSlugRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/albums/$id': typeof DashboardAlbumsIdRoute
+  '/dashboard/albums/new': typeof DashboardAlbumsNewRoute
   '/dashboard/events/$id': typeof DashboardEventsIdRoute
   '/dashboard/events/new': typeof DashboardEventsNewRoute
   '/dashboard/albums': typeof DashboardAlbumsIndexRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/studio/$slug': typeof StudioSlugRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/albums/$id': typeof DashboardAlbumsIdRoute
+  '/dashboard/albums/new': typeof DashboardAlbumsNewRoute
   '/dashboard/events/$id': typeof DashboardEventsIdRoute
   '/dashboard/events/new': typeof DashboardEventsNewRoute
   '/dashboard/albums/': typeof DashboardAlbumsIndexRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/studio/$slug'
     | '/dashboard/'
     | '/dashboard/albums/$id'
+    | '/dashboard/albums/new'
     | '/dashboard/events/$id'
     | '/dashboard/events/new'
     | '/dashboard/albums/'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/studio/$slug'
     | '/dashboard'
     | '/dashboard/albums/$id'
+    | '/dashboard/albums/new'
     | '/dashboard/events/$id'
     | '/dashboard/events/new'
     | '/dashboard/albums'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/studio/$slug'
     | '/dashboard/'
     | '/dashboard/albums/$id'
+    | '/dashboard/albums/new'
     | '/dashboard/events/$id'
     | '/dashboard/events/new'
     | '/dashboard/albums/'
@@ -507,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardEventsIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/albums/new': {
+      id: '/dashboard/albums/new'
+      path: '/albums/new'
+      fullPath: '/dashboard/albums/new'
+      preLoaderRoute: typeof DashboardAlbumsNewRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/albums/$id': {
       id: '/dashboard/albums/$id'
       path: '/albums/$id'
@@ -530,6 +549,7 @@ interface DashboardRouteChildren {
   DashboardTeamRoute: typeof DashboardTeamRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardAlbumsIdRoute: typeof DashboardAlbumsIdRoute
+  DashboardAlbumsNewRoute: typeof DashboardAlbumsNewRoute
   DashboardEventsIdRoute: typeof DashboardEventsIdRoute
   DashboardEventsNewRoute: typeof DashboardEventsNewRoute
   DashboardAlbumsIndexRoute: typeof DashboardAlbumsIndexRoute
@@ -549,6 +569,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardTeamRoute: DashboardTeamRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardAlbumsIdRoute: DashboardAlbumsIdRoute,
+  DashboardAlbumsNewRoute: DashboardAlbumsNewRoute,
   DashboardEventsIdRoute: DashboardEventsIdRoute,
   DashboardEventsNewRoute: DashboardEventsNewRoute,
   DashboardAlbumsIndexRoute: DashboardAlbumsIndexRoute,

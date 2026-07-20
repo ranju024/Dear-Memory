@@ -126,7 +126,7 @@ export const photosAPI = {
     }),
 
   favorite: (id: number) => apiCall(`/photos/photo/${id}/favorite`, { method: "POST" }),
-
+  unfavorite: (id: number) => apiCall(`/photos/photo/${id}/unfavorite?token=${getToken()}`, { method: "POST" }),
   download: (id: number) => apiCall(`/photos/photo/${id}/download`, { method: "POST" }),
 
   delete: (id: number) =>
