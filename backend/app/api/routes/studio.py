@@ -13,33 +13,50 @@ router = APIRouter()
 
 @router.post("/", response_model=StudioResponse, status_code=201)
 async def create_studio(
-    studio: StudioCreate,
+    # studio: StudioCreate,
+    studio_data: StudioCreate,
     token: str,
     db: Session = Depends(get_db)
 ):
     """Create a studio profile"""
     user = get_current_user(token, db)
     
-    # Check if user already has a studio
-    existing_studio = db.query(Studio).filter(Studio.user_id == user.id).first()
-    if existing_studio:
-        raise HTTPException(status_code=400, detail="Studio profile already exists for this user")
+    # # Check if user already has a studio
+    # existing_studio = db.query(Studio).filter(Studio.user_id == user.id).first()
+    # if existing_studio:
+    #     raise HTTPException(status_code=400, detail="Studio profile already exists for this user")
     
-    # Check slug uniqueness
-    existing_slug = db.query(Studio).filter(Studio.slug == studio.slug).first()
-    if existing_slug:
-        raise HTTPException(status_code=400, detail="Studio slug already taken")
+    # # Check slug uniqueness
+    # existing_slug = db.query(Studio).filter(Studio.slug == studio.slug).first()
+    # if existing_slug:
+    #     raise HTTPException(status_code=400, detail="Studio slug already taken")
     
-    new_studio = Studio(
-        user_id=user.id,
-        **studio.dict()
+    # new_studio = Studio(
+    #     user_id=user.id,
+    #     **studio.dict()
+    # )
+    # db.add(new_studio)
+    # db.commit()
+    # db.refresh(new_studio)
+    
+    # logger.info(f"Studio created: {new_studio.name}")
+    # return new_studio
+
+        # Auto-generate slug if not provided
+    slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
+    
+    studio = Studio(
+        name=studio_data.name,
+        tagline=studio_data.tagline or "",
+        slug=slug,
+        owner_id=user.id,
     )
-    db.add(new_studio)
-    db.commit()
-    db.refresh(new_studio)
     
-    logger.info(f"Studio created: {new_studio.name}")
-    return new_studio
+    db.add(studio)
+    db.commit()
+    db.refresh(studio)
+    
+    return studio
 
 @router.get("/me", response_model=StudioResponse)
 async def get_my_studio(
@@ -52,6 +69,21 @@ async def get_my_studio(
     
     if not studio:
         raise HTTPException(status_code=404, detail="Studio profile not found")
+    
+    return studio
+
+@router.get("/me")
+async def get_current_user_studio(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Get current user's studio"""
+    user = get_current_user(token, db)
+    
+    studio = db.query(Studio).filter(Studio.owner_id == user.id).first()
+    
+    if not studio:
+        raise HTTPException(status_code=404, detail="Studio not found")
     
     return studio
 
