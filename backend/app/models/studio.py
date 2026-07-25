@@ -4,45 +4,6 @@ from datetime import datetime
 from ..database import Base
 import enum
 
-# class LeadStatus(str, enum.Enum):
-#     NEW = "New"
-#     CONTACTED = "Contacted"
-#     QUOTED = "Quoted"
-#     BOOKED = "Booked"
-#     LOST = "Lost"
-
-# class Lead(Base):
-#     __tablename__ = "leads"
-
-#     id = Column(Integer, primary_key=True, index=True)
-#     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-#     name = Column(String, nullable=False, index=True)
-#     email = Column(String, index=True)
-#     phone = Column(String)
-    
-#     event_type = Column(String)  # e.g., "Wedding", "Corporate"
-#     event_date = Column(DateTime)
-    
-#     source = Column(String)  # Instagram, Referral, Google, etc.
-#     status = Column(Enum(LeadStatus), default=LeadStatus.NEW)
-    
-#     budget = Column(String)  # e.g., "$5k-8k"
-#     notes = Column(Text)
-    
-#     created_at = Column(DateTime, default=datetime.utcnow, index=True)
-#     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-#     contacted_at = Column(DateTime)
-#     quoted_at = Column(DateTime)
-#     booked_at = Column(DateTime)
-
-#     # Relationships
-#     user = relationship("User", back_populates="leads")
-
-#     def __repr__(self):
-#         return f"<Lead {self.name}>"
-
-
 class Studio(Base):
     __tablename__ = "studios"
 
@@ -69,10 +30,19 @@ class Studio(Base):
     founded_year = Column(Integer)
     total_events = Column(Integer, default=0)
     total_photos = Column(Integer, default=0)
-    rating = Column(String, default="5.0")  # e.g., "4.9"
+    rating = Column(String, default="5.0")
     
     # Pricing
-    base_price = Column(String)  # e.g., "from €1800"
+    base_price = Column(String)
+    
+    # Brand Kit
+    primary_color = Column(String, default="#4a7c6a")
+    background_color = Column(String, default="#EEEAFE")
+    accent_color = Column(String, default="#e1f0f7")
+    text_color = Column(String, default="#2d2a29")
+    heading_font = Column(String, default="plus-jakarta")
+    body_font = Column(String, default="plus-jakarta")
+    watermark_text = Column(String)
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

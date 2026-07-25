@@ -20,28 +20,6 @@ async def create_studio(
 ):
     """Create a studio profile"""
     user = get_current_user(token, db)
-    
-    # # Check if user already has a studio
-    # existing_studio = db.query(Studio).filter(Studio.user_id == user.id).first()
-    # if existing_studio:
-    #     raise HTTPException(status_code=400, detail="Studio profile already exists for this user")
-    
-    # # Check slug uniqueness
-    # existing_slug = db.query(Studio).filter(Studio.slug == studio.slug).first()
-    # if existing_slug:
-    #     raise HTTPException(status_code=400, detail="Studio slug already taken")
-    
-    # new_studio = Studio(
-    #     user_id=user.id,
-    #     **studio.dict()
-    # )
-    # db.add(new_studio)
-    # db.commit()
-    # db.refresh(new_studio)
-    
-    # logger.info(f"Studio created: {new_studio.name}")
-    # return new_studio
-
         # Auto-generate slug if not provided
     slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
     
@@ -49,7 +27,7 @@ async def create_studio(
         name=studio_data.name,
         tagline=studio_data.tagline or "",
         slug=slug,
-        owner_id=user.id,
+        user_id=user.id,
     )
     
     db.add(studio)
@@ -84,6 +62,45 @@ async def get_current_user_studio(
     
     if not studio:
         raise HTTPException(status_code=404, detail="Studio not found")
+    
+    return studio
+
+@router.put("/me")
+async def update_current_user_studio(
+    studio_data: dict,
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Update current user's studio"""
+    user = get_current_user(token, db)
+    
+    studio = db.query(Studio).filter(Studio.user_id == user.id).first()
+    
+    if not studio:
+        raise HTTPException(status_code=404, detail="Studio not found")
+    
+    # Update fields if provided
+    if "name" in studio_data and studio_data["name"]:
+        studio.name = studio_data["name"]
+    if "tagline" in studio_data and studio_data["tagline"]:
+        studio.tagline = studio_data["tagline"]
+    if "primary_color" in studio_data:
+        studio.primary_color = studio_data["primary_color"]
+    if "background_color" in studio_data:
+        studio.background_color = studio_data["background_color"]
+    if "accent_color" in studio_data:
+        studio.accent_color = studio_data["accent_color"]
+    if "text_color" in studio_data:
+        studio.text_color = studio_data["text_color"]
+    if "heading_font" in studio_data:
+        studio.heading_font = studio_data["heading_font"]
+    if "body_font" in studio_data:
+        studio.body_font = studio_data["body_font"]
+    if "watermark_text" in studio_data:
+        studio.watermark_text = studio_data["watermark_text"]
+    
+    db.commit()
+    db.refresh(studio)
     
     return studio
 
