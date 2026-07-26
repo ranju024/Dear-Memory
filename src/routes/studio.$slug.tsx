@@ -4,6 +4,11 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { STUDIO, EVENTS, PHOTOS } from "@/lib/mock/data";
 
 export const Route = createFileRoute("/studio/$slug")({
+  loader: async ({ params }) => {
+    const res = await fetch(`/api/studio/slug/${params.slug}`);
+    if (!res.ok) return null; // fall back to mock brand values below
+    return res.json(); // StudioResponse — includes brand_* fields now
+  },
   head: () => ({
     meta: [
       { title: `${STUDIO.name} — DearMemory Studio` },
@@ -17,6 +22,17 @@ export const Route = createFileRoute("/studio/$slug")({
 });
 
 function Studio() {
+  const studioData = Route.useLoaderData();
+
+  const brandStyle = {
+    "--brand-primary": studioData?.primary_color ?? "#4a7c6a",     // matches your current emerald
+    "--brand-background": studioData?.background_color ?? "#ffffff",
+    "--brand-accent": studioData?.accent_color ?? "#e1f0f7",
+    "--brand-text": studioData?.text_color ?? "#2d2a29",
+    "--brand-heading-font": studioData?.heading_font ?? "inherit",
+    "--brand-body-font": studioData?.body_font ?? "inherit",
+  } as React.CSSProperties;
+
   return (
     <div className="bg-background">
       <SiteNav />

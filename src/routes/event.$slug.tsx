@@ -134,6 +134,7 @@ export const Route = createFileRoute("/event/$slug")({
 function EventGallery() {
   const { slug } = useParams({ from: "/event/$slug" });
   const [event, setEvent] = useState<any>(null);
+  const [studio, setStudio] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +150,10 @@ function EventGallery() {
 
         setEvent(eventData);
         setPhotos(photosData || []);
+        if (eventData.owner_id) {
+          const studioRes = await fetch(`http://localhost:8000/api/studio/${eventData.owner_id}`);
+          if (studioRes.ok) setStudio(await studioRes.json());
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load event");
         console.error(err);
@@ -183,7 +188,13 @@ function EventGallery() {
   const chapterThreePhotos = photos.slice(9);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div
+      className="min-h-screen bg-white"
+      style={{
+        "--brand-primary": studio?.primary_color ?? "#10b981",
+        "--brand-text": studio?.text_color ?? "#111827",
+      } as React.CSSProperties}
+    >
       {lightboxOpen && (
         <ImageLightbox
           images={photos}
@@ -197,7 +208,7 @@ function EventGallery() {
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald" />
+            <div className="w-8 h-8 rounded-full" style={{ backgroundColor: "var(--brand-primary)" }} />
             <span className="font-bold">DearMemory</span>
           </div>
           <div className="hidden md:flex gap-8 text-sm text-gray-600">
@@ -208,7 +219,12 @@ function EventGallery() {
           </div>
           <div className="flex gap-2">
             <a href="/dashboard" className="text-sm text-gray-600">Dashboard</a>
-            <button className="px-4 py-2 bg-emerald text-white rounded-full text-sm font-semibold">Logout</button>
+            <button
+              className="px-4 py-2 text-white rounded-full text-sm font-semibold"
+              style={{ backgroundColor: "var(--brand-primary)" }}
+            >
+              Logout
+            </button>          
           </div>
         </div>
       </nav>
@@ -258,7 +274,10 @@ function EventGallery() {
               <Share2 size={16} />
               Share
             </button>
-            <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-emerald text-white rounded-full text-sm font-semibold hover:bg-emerald-deep">
+            <button
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 text-white rounded-full text-sm font-semibold"
+              style={{ backgroundColor: "var(--brand-primary)" }}
+            >
               <Download size={16} />
               Download all
             </button>
@@ -268,7 +287,7 @@ function EventGallery() {
         {/* Chapter I */}
         <div className="mb-20">
           <div className="text-center mb-12">
-            <div className="text-xs uppercase tracking-widest text-emerald mb-6">Chapter I</div>
+            <div className="text-xs uppercase tracking-widest mb-6" style={{ color: "var(--brand-primary)" }}>Chapter I</div>
             <p className="text-4xl md:text-5xl italic text-gray-900 max-w-4xl mx-auto leading-relaxed">
               "{event.description || event.subtitle}"
             </p>
@@ -299,7 +318,7 @@ function EventGallery() {
         {chapterTwoPhotos.length > 0 && (
           <div className="mb-20">
             <div className="text-center mb-12">
-              <div className="text-xs uppercase tracking-widest text-emerald mb-6">Chapter II</div>
+              <div className="text-xs uppercase tracking-widest text-emerald mb-6" style={{ color: "var(--brand-primary)" }}>Chapter II</div>
               <p className="text-4xl md:text-5xl italic text-gray-900 max-w-4xl mx-auto leading-relaxed">
                 The story unfolds
               </p>
@@ -329,7 +348,7 @@ function EventGallery() {
         {chapterThreePhotos.length > 0 && (
           <div className="mb-20">
             <div className="text-center mb-12">
-              <div className="text-xs uppercase tracking-widest text-emerald mb-6">Chapter III</div>
+              <div className="text-xs uppercase tracking-widest text-emerald mb-6"style={{ color: "var(--brand-primary)" }}>Chapter III</div>
               <p className="text-4xl md:text-5xl italic text-gray-900 max-w-4xl mx-auto leading-relaxed">
                 Forever captured
               </p>
