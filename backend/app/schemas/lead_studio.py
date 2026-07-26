@@ -69,6 +69,14 @@ class StudioUpdate(BaseModel):
     instagram: Optional[str] = None
     founded_year: Optional[int] = None
     base_price: Optional[str] = None
+    # Brand Kit — added
+    primary_color: Optional[str] = None
+    background_color: Optional[str] = None
+    accent_color: Optional[str] = None
+    text_color: Optional[str] = None
+    heading_font: Optional[str] = None
+    body_font: Optional[str] = None
+    watermark_text: Optional[str] = None
 
 class StudioResponse(StudioBase):
     id: int
@@ -84,6 +92,14 @@ class StudioResponse(StudioBase):
     total_photos: int
     rating: str
     base_price: Optional[str]
+    # Brand Kit — added
+    primary_color: str
+    background_color: str
+    accent_color: str
+    text_color: str
+    heading_font: str
+    body_font: str
+    watermark_text: Optional[str]
     created_at: datetime
     updated_at: datetime
 

@@ -11,30 +11,34 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 @router.post("/", response_model=StudioResponse, status_code=201)
 async def create_studio(
-    # studio: StudioCreate,
     studio_data: StudioCreate,
     token: str,
     db: Session = Depends(get_db)
 ):
     """Create a studio profile"""
     user = get_current_user(token, db)
-        # Auto-generate slug if not provided
+
+    # Auto-generate slug if not provided
     slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
-    
+
     studio = Studio(
         name=studio_data.name,
         tagline=studio_data.tagline or "",
+        about=studio_data.about,
         slug=slug,
         user_id=user.id,
     )
-    
+
     db.add(studio)
     db.commit()
     db.refresh(studio)
-    
+
+    logger.info(f"Studio created: {studio.name}")
     return studio
+
 
 @router.get("/me", response_model=StudioResponse)
 async def get_my_studio(
@@ -44,85 +48,12 @@ async def get_my_studio(
     """Get current user's studio profile"""
     user = get_current_user(token, db)
     studio = db.query(Studio).filter(Studio.user_id == user.id).first()
-    
+
     if not studio:
         raise HTTPException(status_code=404, detail="Studio profile not found")
-    
+
     return studio
 
-@router.get("/me")
-async def get_current_user_studio(
-    token: str,
-    db: Session = Depends(get_db)
-):
-    """Get current user's studio"""
-    user = get_current_user(token, db)
-    
-    studio = db.query(Studio).filter(Studio.owner_id == user.id).first()
-    
-    if not studio:
-        raise HTTPException(status_code=404, detail="Studio not found")
-    
-    return studio
-
-@router.put("/me")
-async def update_current_user_studio(
-    studio_data: dict,
-    token: str,
-    db: Session = Depends(get_db)
-):
-    """Update current user's studio"""
-    user = get_current_user(token, db)
-    
-    studio = db.query(Studio).filter(Studio.user_id == user.id).first()
-    
-    if not studio:
-        raise HTTPException(status_code=404, detail="Studio not found")
-    
-    # Update fields if provided
-    if "name" in studio_data and studio_data["name"]:
-        studio.name = studio_data["name"]
-    if "tagline" in studio_data and studio_data["tagline"]:
-        studio.tagline = studio_data["tagline"]
-    if "primary_color" in studio_data:
-        studio.primary_color = studio_data["primary_color"]
-    if "background_color" in studio_data:
-        studio.background_color = studio_data["background_color"]
-    if "accent_color" in studio_data:
-        studio.accent_color = studio_data["accent_color"]
-    if "text_color" in studio_data:
-        studio.text_color = studio_data["text_color"]
-    if "heading_font" in studio_data:
-        studio.heading_font = studio_data["heading_font"]
-    if "body_font" in studio_data:
-        studio.body_font = studio_data["body_font"]
-    if "watermark_text" in studio_data:
-        studio.watermark_text = studio_data["watermark_text"]
-    
-    db.commit()
-    db.refresh(studio)
-    
-    return studio
-
-@router.get("/slug/{slug}", response_model=StudioResponse)
-async def get_studio_by_slug(slug: str, db: Session = Depends(get_db)):
-    """Get studio profile by slug (public)"""
-    studio = db.query(Studio).filter(Studio.slug == slug).first()
-    
-    if not studio:
-        raise HTTPException(status_code=404, detail="Studio not found")
-    
-    return studio
-
-@router.get("/{user_id}", response_model=StudioResponse)
-async def get_user_studio(user_id: int, db: Session = Depends(get_db)):
-    """Get studio profile for a user (public)"""
-    studio = db.query(Studio).filter(Studio.user_id == user_id).first()
-    
-    if not studio:
-        raise HTTPException(status_code=404, detail="Studio not found")
-    
-    return studio
 
 @router.put("/me", response_model=StudioResponse)
 async def update_my_studio(
@@ -130,22 +61,45 @@ async def update_my_studio(
     token: str,
     db: Session = Depends(get_db)
 ):
-    """Update current user's studio profile"""
+    """Update current user's studio profile, including brand kit settings"""
     user = get_current_user(token, db)
     studio = db.query(Studio).filter(Studio.user_id == user.id).first()
-    
+
     if not studio:
         raise HTTPException(status_code=404, detail="Studio profile not found")
-    
+
     update_data = studio_update.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(studio, field, value)
-    
+
     db.commit()
     db.refresh(studio)
-    
+
     logger.info(f"Studio updated: {studio.name}")
     return studio
+
+
+@router.get("/slug/{slug}", response_model=StudioResponse)
+async def get_studio_by_slug(slug: str, db: Session = Depends(get_db)):
+    """Get studio profile by slug (public)"""
+    studio = db.query(Studio).filter(Studio.slug == slug).first()
+
+    if not studio:
+        raise HTTPException(status_code=404, detail="Studio not found")
+
+    return studio
+
+
+@router.get("/{user_id}", response_model=StudioResponse)
+async def get_user_studio(user_id: int, db: Session = Depends(get_db)):
+    """Get studio profile for a user (public)"""
+    studio = db.query(Studio).filter(Studio.user_id == user_id).first()
+
+    if not studio:
+        raise HTTPException(status_code=404, detail="Studio not found")
+
+    return studio
+
 
 @router.post("/me/stats/update", response_model=StudioResponse)
 async def update_studio_stats(
@@ -156,27 +110,23 @@ async def update_studio_stats(
     from sqlalchemy import func
     from app.models.event import Event
     from app.models.photo import Photo
-    
+
     user = get_current_user(token, db)
     studio = db.query(Studio).filter(Studio.user_id == user.id).first()
-    
+
     if not studio:
         raise HTTPException(status_code=404, detail="Studio profile not found")
-    
-    # Count total events
+
     total_events = db.query(func.count(Event.id)).filter(Event.owner_id == user.id).scalar() or 0
-    
-    # Count total photos
     total_photos = db.query(func.count(Photo.id)).join(Event).filter(
         Event.owner_id == user.id
     ).scalar() or 0
-    
-    # Update studio stats
+
     studio.total_events = total_events
     studio.total_photos = total_photos
-    
+
     db.commit()
     db.refresh(studio)
-    
+
     logger.info(f"Studio stats updated: {studio.name}")
     return studio
