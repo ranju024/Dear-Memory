@@ -21,8 +21,19 @@ async def create_studio(
     """Create a studio profile"""
     user = get_current_user(token, db)
 
+    # Prevent duplicate studios for the same user
+    existing = db.query(Studio).filter(Studio.user_id == user.id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Studio profile already exists for this user")
+
     # Auto-generate slug if not provided
-    slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
+    base_slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
+    slug = base_slug
+    suffix = 1
+    # Guarantee uniqueness instead of letting the DB throw IntegrityError
+    while db.query(Studio).filter(Studio.slug == slug).first() is not None:
+        suffix += 1
+        slug = f"{base_slug}-{suffix}"
 
     studio = Studio(
         name=studio_data.name,

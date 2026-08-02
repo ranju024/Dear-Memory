@@ -2,8 +2,14 @@ import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router"
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app/AppShell";
 import { eventsAPI, photosAPI, analyticsAPI } from "@/lib/api/client";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Upload, LayoutGrid } from "lucide-react";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import {
+  EventDesignSidebar,
+  parseDesignConfig,
+  DEFAULT_DESIGN_CONFIG,
+  type DesignConfig,
+} from "@/components/app/EventDesignSidebar";
 
 export const Route = createFileRoute("/dashboard/events/$id")({
   head: () => ({ meta: [{ title: "Event Details — DearMemory" }] }),
@@ -23,6 +29,10 @@ function EventDetail() {
   const [uploading, setUploading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [view, setView] = useState<"details" | "design">("details");
+  const [designConfig, setDesignConfig] = useState<DesignConfig>(DEFAULT_DESIGN_CONFIG);
+  const [savingDesign, setSavingDesign] = useState(false);
+  const [designSaved, setDesignSaved] = useState(false);
 
   const eventId = parseInt(id);
 
@@ -40,6 +50,7 @@ function EventDetail() {
         setPhotos(photosData || []);
         setPerformance(perfData);
         setEditData(eventData);
+        setDesignConfig(parseDesignConfig(eventData.design_config));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load event");
         console.error(err);
@@ -153,6 +164,23 @@ function EventDetail() {
     }
   };
 
+  const handleSaveDesign = async () => {
+    setSavingDesign(true);
+    setDesignSaved(false);
+    try {
+      const updated = await eventsAPI.update(eventId, {
+        design_config: JSON.stringify(designConfig),
+      });
+      setEvent(updated);
+      setDesignSaved(true);
+      setTimeout(() => setDesignSaved(false), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save page design");
+    } finally {
+      setSavingDesign(false);
+    }
+  };
+
   const handlePublish = async () => {
     try {
       const updated = await eventsAPI.publish(eventId);
@@ -182,6 +210,7 @@ function EventDetail() {
     <AppShell
       title={event.title}
       subtitle={event.subtitle || "Event details and analytics"}
+      hideSidebar={view === "design"}
       action={
         <div className="flex gap-2">
           <button
@@ -202,6 +231,40 @@ function EventDetail() {
         </div>
       }
     >
+      {view === "design" ? (
+        <div className="-mx-7 md:-mx-9 -my-8 flex" style={{ minHeight: "calc(100vh - 220px)" }}>
+          <aside className="w-[300px] shrink-0 border-r border-[#e8e4de] flex flex-col bg-white">
+            <div className="px-4 py-4 border-b border-[#e8e4de]">
+              <button
+                onClick={() => setView("details")}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-warm-gray hover:text-emerald"
+              >
+                <ArrowLeft size={14} />
+                Back to details
+              </button>
+            </div>
+            <EventDesignSidebar config={designConfig} onChange={setDesignConfig} variant="flush" />
+            <div className="p-3 border-t border-[#e8e4de]">
+              <button
+                onClick={handleSaveDesign}
+                disabled={savingDesign}
+                className="w-full px-4 py-2 bg-emerald text-white rounded-xl text-sm font-semibold hover:bg-emerald-deep disabled:opacity-60"
+              >
+                {savingDesign ? "Saving..." : designSaved ? "Saved!" : "Save design"}
+              </button>
+            </div>
+          </aside>
+
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#f7f5f1]">
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+                {error}
+              </div>
+            )}
+            <EventDesignPreview event={event} photos={photos} config={designConfig} />
+          </div>
+        </div>
+      ) : (
       <div className="space-y-8">
         {error && (
           <div className="p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
@@ -209,6 +272,15 @@ function EventDetail() {
           </div>
         )}
 
+        <div className="flex justify-end">
+          <button
+            onClick={() => setView("design")}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-cream rounded-full text-xs font-semibold hover:bg-cream/70"
+          >
+            <LayoutGrid size={14} />
+            Customize page design
+          </button>
+        </div>
         {/* Event Details Section */}
         <section className="bg-white rounded-2xl ring-1 ring-border p-6">
           <div className="flex justify-between items-start mb-6">
@@ -338,7 +410,159 @@ function EventDetail() {
           )}
         </section>
       </div>
+      )}
     </AppShell>
+  );
+}
+
+function EventDesignPreview({
+  event,
+  photos,
+  config,
+}: {
+  event: any;
+  photos: any[];
+  config: DesignConfig;
+}) {
+  const visibleSections = config.sections.filter((s) => s.visible);
+
+  return (
+    <div className="flex-1 min-w-0 bg-white rounded-2xl ring-1 ring-border p-6 space-y-5">
+      <div className="text-[10px] font-bold uppercase tracking-widest text-warm-gray">
+        Live preview
+      </div>
+      {visibleSections.length === 0 && (
+        <p className="text-sm text-warm-gray text-center py-12">
+          No sections are visible — toggle at least one on in the sidebar.
+        </p>
+      )}
+      {visibleSections.map((section) => {
+        if (section.type === "cover") {
+          const heightPx = { Small: 120, Medium: 200, Large: 320 }[config.cover.height];
+          const justify = { Left: "flex-start", Center: "center", Right: "flex-end" }[
+            config.cover.titleAlign
+          ];
+          return (
+            <div
+              key={section.id}
+              className="relative rounded-xl bg-cream ring-1 ring-border overflow-hidden flex items-end"
+              style={{ height: heightPx }}
+            >
+              {event?.cover_image && (
+                <img
+                  src={`http://localhost:8000${event.cover_image}`}
+                  alt="Cover"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              )}
+              <div
+                className="absolute inset-0"
+                style={{ background: `rgba(0,0,0,${config.cover.overlay / 100})` }}
+              />
+              <div
+                className="relative w-full flex p-4"
+                style={{ justifyContent: justify }}
+              >
+                <p className="text-white font-bold text-lg drop-shadow">
+                  {event?.title || "Event title"}
+                </p>
+              </div>
+            </div>
+          );
+        }
+        if (section.type === "gallery") {
+          const cols = Math.min(config.gallery.columns, 6);
+          return (
+            <div key={section.id}>
+              <div className="text-xs font-semibold text-warm-gray mb-2">
+                Gallery — {config.gallery.layout} · {config.gallery.columns} cols
+              </div>
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+                  gap: `${config.gallery.spacing * 2}px`,
+                }}
+              >
+                {(photos.length ? photos.slice(0, cols * 2) : Array.from({ length: cols * 2 })).map(
+                  (photo: any, i: number) => (
+                    <div
+                      key={photo?.id ?? i}
+                      className="aspect-square bg-cream ring-1 ring-border overflow-hidden"
+                      style={{ borderRadius: `${config.gallery.radius}px` }}
+                    >
+                      {photo?.url && (
+                        <img
+                          src={`http://localhost:8000${photo.url}`}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          );
+        }
+        if (section.type === "info") {
+          const alignClass = config.info.align === "Center" ? "text-center" : "text-left";
+          return (
+            <div key={section.id} className={`rounded-xl bg-cream ring-1 ring-border p-4 ${alignClass}`}>
+              <p className="text-sm font-semibold">{event?.title || "Event title"}</p>
+              {config.info.showDate && (
+                <p className="text-xs text-warm-gray mt-1">
+                  {event?.date ? new Date(event.date).toLocaleDateString() : "Event date"}
+                </p>
+              )}
+              {config.info.showLocation && (
+                <p className="text-xs text-warm-gray">{event?.location || "Event location"}</p>
+              )}
+              {config.info.showDescription && (
+                <p className="text-xs text-warm-gray mt-1">
+                  {event?.description || "Event description goes here."}
+                </p>
+              )}
+            </div>
+          );
+        }
+        if (section.type === "guestbook") {
+          return (
+            <div
+              key={section.id}
+              className="rounded-xl bg-cream ring-1 ring-border p-4 text-xs text-warm-gray"
+            >
+              {config.guestbook.enabled ? (
+                <>
+                  Guestbook / comments section
+                  {config.guestbook.requireApproval && (
+                    <span className="block mt-1 text-[10px] text-warm-gray/70">
+                      Comments require approval before showing
+                    </span>
+                  )}
+                </>
+              ) : (
+                "Guest comments are turned off for this event"
+              )}
+            </div>
+          );
+        }
+        if (section.type === "contact") {
+          return (
+            <div
+              key={section.id}
+              className="rounded-2xl bg-emerald/10 ring-1 ring-emerald/30 p-4 text-center"
+            >
+              <button className="px-5 py-2 bg-emerald text-white rounded-full text-xs font-semibold">
+                {config.contact.buttonLabel || "Book this studio"}
+              </button>
+              <p className="text-[10px] text-warm-gray mt-2">via {config.contact.method}</p>
+            </div>
+          );
+        }
+        return null;
+      })}
+    </div>
   );
 }
 

@@ -39,6 +39,7 @@ class EventUpdate(BaseModel):
     template: Optional[str] = None
     status: Optional[EventStatusEnum] = None
     cover_image: Optional[str] = None
+    design_config: Optional[str] = None
 
 class EventResponse(EventBase):
     id: int
@@ -48,6 +49,7 @@ class EventResponse(EventBase):
     visitors: int
     owner_id: int
     photo_count: int
+    design_config: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

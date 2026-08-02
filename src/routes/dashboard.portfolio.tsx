@@ -85,11 +85,11 @@ function Portfolio() {
                 const newStudio = await studioAPI.create({
                   name: "My Studio",
                   tagline: "Professional photography",
-                  slug: "my-studio",
                 });
                 setStudio(newStudio);
                 setEditData(newStudio);
               } catch (err) {
+                setError(err instanceof Error ? err.message : "Failed to create studio profile");
                 console.error(err);
               }
             }}

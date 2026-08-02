@@ -38,6 +38,9 @@ class Event(Base):
     status = Column(Enum(EventStatus), default=EventStatus.DRAFT)
     template = Column(String, default="Modern Elegance")
     password_protected = Column(String, nullable=True)  # Optional password
+
+    # FlowCV-style page design: JSON string of {sections: [{id, type, visible, order}], style: {...}}
+    design_config = Column(Text, nullable=True)
     
     # Ownership
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)

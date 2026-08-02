@@ -50,12 +50,11 @@ class LeadResponse(LeadBase):
 # Studio schemas
 class StudioBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
-    slug: str = Field(..., min_length=1, max_length=200)
     tagline: Optional[str] = None
     about: Optional[str] = None
 
 class StudioCreate(StudioBase):
-    pass
+    slug: Optional[str] = Field(None, min_length=1, max_length=200)
 
 class StudioUpdate(BaseModel):
     name: Optional[str] = None
@@ -80,6 +79,7 @@ class StudioUpdate(BaseModel):
 
 class StudioResponse(StudioBase):
     id: int
+    slug: str
     logo: Optional[str]
     city: Optional[str]
     country: Optional[str]
