@@ -28,6 +28,7 @@ function Brand() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<any>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -45,7 +46,7 @@ function Brand() {
         const studioData = await studioAPI.getMe();
         setStudio(studioData);
         setEditData({
-          logo_url: studioData.logo_url || null,
+          logo: studioData.logo || null,
           primary_color: studioData.primary_color || "#4a7c6a",
           background_color: studioData.background_color || "#EEEAFE",
           accent_color: studioData.accent_color || "#e1f0f7",
@@ -85,16 +86,30 @@ function Brand() {
     setConsistencyScore(score);
   };
 
+  const [logoUploading, setLogoUploading] = useState(false);
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setLogoFile(file);
+    // Show an instant local preview while the real upload is in flight
     const reader = new FileReader();
     reader.onload = () => {
-      setEditData({ ...editData, logo_preview: reader.result });
+      setEditData((prev: any) => ({ ...prev, logo_preview: reader.result }));
     };
     reader.readAsDataURL(file);
+
+    setLogoUploading(true);
+    setActionError(null);
+    try {
+      const updated = await studioAPI.uploadLogo(file);
+      setStudio(updated);
+      setEditData((prev: any) => ({ ...prev, logo: updated.logo, logo_preview: null }));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to upload logo");
+    } finally {
+      setLogoUploading(false);
+    }
   };
 
   const handleColorChange = (colorKey: string, value: string) => {
@@ -128,6 +143,7 @@ function Brand() {
     try {
       const dataToSave = { ...editData };
       delete dataToSave.logo_preview;
+      delete dataToSave.logo; // saved separately via the logo upload endpoint
 
       // Call the correct update endpoint
       const updated = await studioAPI.update(dataToSave);
@@ -288,6 +304,12 @@ Text: ${editData.text_color}
         </button>
       }
     >
+      {actionError && (
+        <div className="mb-6 p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg">
+          {actionError}
+        </div>
+      )}
+
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Logo */}
@@ -300,9 +322,9 @@ Text: ${editData.text_color}
                 alt="Logo preview"
                 className="w-full h-full object-contain p-4"
               />
-            ) : editData.logo_url ? (
+            ) : editData.logo ? (
               <img
-                src={`http://localhost:8000${editData.logo_url}`}
+                src={`http://localhost:8000${editData.logo}`}
                 alt="Logo"
                 className="w-full h-full object-contain p-4"
               />
@@ -317,9 +339,10 @@ Text: ${editData.text_color}
               type="file"
               accept="image/*"
               onChange={handleLogoUpload}
+              disabled={logoUploading}
               className="hidden"
             />
-            Replace logo
+            {logoUploading ? "Uploading..." : "Replace logo"}
           </label>
         </div>
 

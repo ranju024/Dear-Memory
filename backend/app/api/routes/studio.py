@@ -1,15 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+import os
+import uuid
 from ...database import get_db
 from ...models.studio import Studio
 from ...models.user import User
 from ...schemas.lead_studio import StudioCreate, StudioUpdate, StudioResponse
 from .auth import get_current_user
+from ...config import UPLOAD_DIR, ALLOWED_IMAGE_TYPES, MAX_UPLOAD_SIZE
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @router.post("/", response_model=StudioResponse, status_code=201)
@@ -21,19 +25,8 @@ async def create_studio(
     """Create a studio profile"""
     user = get_current_user(token, db)
 
-    # Prevent duplicate studios for the same user
-    existing = db.query(Studio).filter(Studio.user_id == user.id).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Studio profile already exists for this user")
-
     # Auto-generate slug if not provided
-    base_slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
-    slug = base_slug
-    suffix = 1
-    # Guarantee uniqueness instead of letting the DB throw IntegrityError
-    while db.query(Studio).filter(Studio.slug == slug).first() is not None:
-        suffix += 1
-        slug = f"{base_slug}-{suffix}"
+    slug = studio_data.slug or studio_data.name.lower().replace(" ", "-")
 
     studio = Studio(
         name=studio_data.name,
@@ -87,6 +80,52 @@ async def update_my_studio(
     db.refresh(studio)
 
     logger.info(f"Studio updated: {studio.name}")
+    return studio
+
+
+@router.post("/me/logo", response_model=StudioResponse)
+async def upload_studio_logo(
+    token: str,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Upload/replace the studio's brand logo. Saves the file to disk and persists
+    the resulting URL onto studio.logo — this is the actual missing piece the
+    Brand Kit page's 'Replace logo' button needs to call."""
+    user = get_current_user(token, db)
+    studio = db.query(Studio).filter(Studio.user_id == user.id).first()
+    if not studio:
+        raise HTTPException(status_code=404, detail="Studio profile not found")
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type not allowed. Allowed: {', '.join(ALLOWED_IMAGE_TYPES)}",
+        )
+
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large. Max size: {MAX_UPLOAD_SIZE / 1024 / 1024}MB",
+        )
+
+    file_extension = file.filename.split(".")[-1]
+    unique_filename = f"logo_{uuid.uuid4()}.{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    try:
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        logger.error(f"Logo upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Logo upload failed")
+
+    studio.logo = f"/uploads/{unique_filename}"
+    db.commit()
+    db.refresh(studio)
+
+    logger.info(f"Studio logo updated: {studio.name}")
     return studio
 
 

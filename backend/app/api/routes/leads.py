@@ -4,6 +4,7 @@ from typing import List
 from ...database import get_db
 from ...models.lead import Lead, LeadStatus
 from ...models.user import User
+from ...models.event import Event
 from ...schemas.lead_studio import LeadCreate, LeadUpdate, LeadResponse
 from .auth import get_current_user
 import logging
@@ -11,6 +12,33 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+@router.post("/public/{event_slug}", response_model=LeadResponse, status_code=201)
+async def create_public_lead(
+    event_slug: str,
+    lead: LeadCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Public: a visitor on an event's page (e.g. the Contact / book us section)
+    submits an inquiry with no login required. It lands in the studio owner's
+    leads CRM tied to whichever event they contacted from.
+    """
+    event = db.query(Event).filter(Event.slug == event_slug).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    new_lead = Lead(
+        user_id=event.owner_id,
+        source=lead.source or "Event page inquiry",
+        **lead.dict(exclude={"source"}),
+    )
+    db.add(new_lead)
+    db.commit()
+    db.refresh(new_lead)
+
+    logger.info(f"Public lead created via event '{event_slug}': {new_lead.name}")
+    return new_lead
 
 @router.post("/", response_model=LeadResponse, status_code=201)
 async def create_lead(

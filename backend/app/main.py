@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 import os
 from contextlib import asynccontextmanager
 from .database import engine, Base
-from .api.routes import auth, events, photos, albums, leads, analytics, studio
+from .api.routes import auth, events, photos, albums, leads, analytics, studio, guestbook
 import logging
 
 # Configure logging
@@ -47,6 +47,7 @@ app.include_router(albums.router, prefix="/api/albums", tags=["albums"])
 app.include_router(leads.router, prefix="/api/leads", tags=["leads"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(studio.router, prefix="/api/studio", tags=["studio"])
+app.include_router(guestbook.router, prefix="/api/guestbook", tags=["guestbook"])
 
 @app.get("/")
 async def root():

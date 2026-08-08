@@ -169,6 +169,14 @@ export const leadsAPI = {
       body: JSON.stringify(data),
     }),
 
+  // Public: no token — used by guests submitting the "Contact / book us" form
+  // on an event's public page.
+  createPublic: (eventSlug: string, data: any) =>
+    apiCall(`/leads/public/${eventSlug}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   list: (status?: string) => {
     const query = new URLSearchParams({ token: getToken() || "" });
     if (status) query.append("status_filter", status);
@@ -205,6 +213,31 @@ export const analyticsAPI = {
 };
 
 // STUDIO
+export const guestbookAPI = {
+  // Public: no token — anyone viewing the event page can sign the guestbook.
+  sign: (eventId: number, data: { name: string; message: string }) =>
+    apiCall(`/guestbook/${eventId}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Public: approved entries only.
+  list: (eventId: number) => apiCall(`/guestbook/${eventId}`),
+
+  // Studio owner only.
+  listPending: (eventId: number) => apiCall(`/guestbook/${eventId}/pending?token=${getToken()}`),
+
+  approve: (eventId: number, entryId: number) =>
+    apiCall(`/guestbook/${eventId}/${entryId}/approve?token=${getToken()}`, {
+      method: "POST",
+    }),
+
+  remove: (eventId: number, entryId: number) =>
+    apiCall(`/guestbook/${eventId}/${entryId}?token=${getToken()}`, {
+      method: "DELETE",
+    }),
+};
+
 export const studioAPI = {
   create: (data: any) =>
     apiCall(`/studio/?token=${getToken()}`, {
@@ -221,4 +254,20 @@ export const studioAPI = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+
+  // Real file upload — must NOT go through apiCall, since that forces a
+  // application/json Content-Type which breaks multipart form uploads.
+  uploadLogo: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = getToken();
+    return fetch(`${API_BASE_URL}/studio/me/logo?token=${token}`, {
+      method: "POST",
+      body: formData,
+    }).then((r) => {
+      if (!r.ok)
+        return r.json().then((e) => Promise.reject(new Error(e.detail || "Upload failed")));
+      return r.json();
+    });
+  },
 };
