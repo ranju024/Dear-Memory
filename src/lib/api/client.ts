@@ -1,5 +1,4 @@
-const API_BASE_URL = "http://localhost:8000/api";
-
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 // Store token in localStorage
 export const setToken = (token: string) => {
   localStorage.setItem("token", token);
